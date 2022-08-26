@@ -497,7 +497,7 @@ static int link_update_flags(Link *link, sd_netlink_message *m, bool force_updat
                 return 0;
 
         if (link->flags != flags) {
-                log_link_debug(link, "Flags change:%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",
+                log_link_debug(link, "cdx: now=%ld, Flags change:%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", now(CLOCK_MONOTONIC),
                                FLAG_STRING("LOOPBACK", IFF_LOOPBACK, link->flags, flags),
                                FLAG_STRING("MASTER", IFF_MASTER, link->flags, flags),
                                FLAG_STRING("SLAVE", IFF_SLAVE, link->flags, flags),
@@ -619,7 +619,7 @@ static int link_new(Manager *manager, sd_netlink_message *message, Link **ret) {
 
         r = sd_netlink_message_read_u32(message, IFLA_MASTER, (uint32_t *)&link->master_ifindex);
         if (r < 0)
-                log_link_debug_errno(link, r, "New device has no master, continuing without");
+                log_link_debug_errno(link, r, "cdx: now=%ld, New device has no master, continuing without", now(CLOCK_MONOTONIC));
 
         r = sd_netlink_message_read_ether_addr(message, IFLA_ADDRESS, &link->mac);
         if (r < 0)
@@ -772,7 +772,7 @@ void link_set_state(Link *link, LinkState state) {
         if (link->state == state)
                 return;
 
-        log_link_debug(link, "State changed: %s -> %s",
+        log_link_debug(link, "cdx: now=%ld: State changed: %s -> %s", now(CLOCK_MONOTONIC),
                        link_state_to_string(link->state),
                        link_state_to_string(state));
 
@@ -3265,7 +3265,7 @@ static int link_initialized_handler(sd_netlink *rtnl, sd_netlink_message *m, Lin
 
         r = sd_netlink_message_get_errno(m);
         if (r < 0) {
-                log_link_warning_errno(link, r, "Failed to wait for the interface to be initialized: %m");
+                log_link_warning_errno(link, r, "cdx: link_initialized_handler: now=%ld, req=%p, Failed to wait for the interface to be initialized: %m", now(CLOCK_MONOTONIC), m);
                 link_enter_failed(link);
                 return 0;
         }
@@ -3299,7 +3299,7 @@ int link_initialized(Link *link, sd_device *device) {
         if (link->sd_device)
                 return 0;
 
-        log_link_debug(link, "udev initialized link");
+        log_link_notice(link, "cdx: now=%ld: link_initialized: udev initialized link", now(CLOCK_MONOTONIC));
 
         link->sd_device = sd_device_ref(device);
 
@@ -3308,8 +3308,10 @@ int link_initialized(Link *link, sd_device *device) {
          * when it returns we know that the pending NEWLINKs have already been
          * processed and that we are up-to-date */
 
+        log_link_notice(link, "cdx: link_initialized: before calling get_link: now=%ld\n", now(CLOCK_MONOTONIC));
         r = sd_rtnl_message_new_link(link->manager->rtnl, &req, RTM_GETLINK,
                                      link->ifindex);
+        log_link_notice(link, "cdx: link_initialized: after calling get_link, now=%ld, r=%d, req=%p\n", now(CLOCK_MONOTONIC), r, req);
         if (r < 0)
                 return r;
 
@@ -3536,7 +3538,7 @@ int link_add(Manager *m, sd_netlink_message *message, Link **ret) {
 
         link = *ret;
 
-        log_link_debug(link, "Link %d added", link->ifindex);
+        log_link_debug(link, "cdx: now=%ld, Link %d added", now(CLOCK_MONOTONIC), link->ifindex);
 
         r = link_load(link);
         if (r < 0)
@@ -3791,7 +3793,7 @@ int link_update(Link *link, sd_netlink_message *m) {
                 link->mtu = mtu;
                 if (link->original_mtu == 0) {
                         link->original_mtu = mtu;
-                        log_link_debug(link, "Saved original MTU: %" PRIu32, link->original_mtu);
+                        log_link_debug(link, "cdx: now=%ld, Saved original MTU: %" PRIu32, now(CLOCK_MONOTONIC), link->original_mtu);
                 }
 
                 if (link->dhcp_client) {
@@ -3896,13 +3898,13 @@ int link_update(Link *link, sd_netlink_message *m) {
                 return r;
 
         if (!link_was_admin_up && (link->flags & IFF_UP)) {
-                log_link_info(link, "Link UP");
+                log_link_info(link, "cdx: now=%ld, Link UP", now(CLOCK_MONOTONIC));
 
                 r = link_admin_state_up(link);
                 if (r < 0)
                         return r;
         } else if (link_was_admin_up && !(link->flags & IFF_UP)) {
-                log_link_info(link, "Link DOWN");
+                log_link_info(link, "cdx: now=%ld, Link DOWN", now(CLOCK_MONOTONIC));
 
                 r = link_admin_state_down(link);
                 if (r < 0)
@@ -3917,13 +3919,13 @@ int link_update(Link *link, sd_netlink_message *m) {
         carrier_lost = had_carrier && !link_has_carrier(link);
 
         if (carrier_gained) {
-                log_link_info(link, "Gained carrier");
+                log_link_info(link, "cdx: now=%ld, Gained carrier", now(CLOCK_MONOTONIC));
 
                 r = link_carrier_gained(link);
                 if (r < 0)
                         return r;
         } else if (carrier_lost) {
-                log_link_info(link, "Lost carrier");
+                log_link_info(link, "cdx: now=%ld, Lost carrier", now(CLOCK_MONOTONIC));
 
                 r = link_carrier_lost(link);
                 if (r < 0)

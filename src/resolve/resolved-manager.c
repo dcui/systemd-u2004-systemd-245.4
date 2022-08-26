@@ -496,7 +496,7 @@ static int manager_watch_hostname(Manager *m) {
                 if (r < 0)
                         return r;
         } else
-                log_info("Using system hostname '%s'.", m->full_hostname);
+                log_notice("cdx: now=%ld, Using system hostname '%s'.", now(CLOCK_MONOTONIC), m->full_hostname);
 
         return 0;
 }

@@ -119,7 +119,7 @@ bool manager_configured(Manager *m) {
                 if (r < 0 && !m->any)
                         return false;
                 if (l->state && STR_IN_SET(l->state, "configured", "failed")) {
-                        log_info("managing: %s", l->ifname);
+                        log_info("cdx: now=%ld, managing: %s", now(CLOCK_MONOTONIC), l->ifname);
                         none_managed = false;
                 }
                 if (r > 0)

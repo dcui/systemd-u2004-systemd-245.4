@@ -38,7 +38,7 @@
 #define SNDBUF_SIZE (8*1024*1024)
 
 static LogTarget log_target = LOG_TARGET_CONSOLE;
-static int log_max_level[] = {LOG_INFO, LOG_INFO};
+static int log_max_level[] = {LOG_DEBUG, LOG_DEBUG};
 assert_cc(ELEMENTSOF(log_max_level) == _LOG_REALM_MAX);
 static int log_facility = LOG_DAEMON;
 
@@ -50,7 +50,7 @@ static int journal_fd = -1;
 static bool syslog_is_stream = false;
 
 static bool show_color = false;
-static bool show_location = false;
+static bool show_location = true;
 
 static bool upgrade_syslog_to_journal = false;
 static bool always_reopen_console = false;

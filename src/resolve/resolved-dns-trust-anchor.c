@@ -478,7 +478,7 @@ static int dns_trust_anchor_dump(DnsTrustAnchor *d) {
         if (hashmap_isempty(d->positive_by_key))
                 log_info("No positive trust anchors defined.");
         else {
-                log_info("Positive Trust Anchors:");
+                log_notice("cdx: now=%ld, Positive Trust Anchors:", now(CLOCK_MONOTONIC));
                 HASHMAP_FOREACH(a, d->positive_by_key, i) {
                         DnsResourceRecord *rr;
 
@@ -502,7 +502,7 @@ static int dns_trust_anchor_dump(DnsTrustAnchor *d) {
                 if (!j)
                         return log_oom();
 
-                log_info("Negative trust anchors: %s", j);
+                log_notice("cdx: now=%ld, Negative trust anchors: %s",now(CLOCK_MONOTONIC), j);
         }
 
         return 0;

@@ -674,7 +674,7 @@ int manager_rtnl_process_neighbor(sd_netlink *rtnl, sd_netlink_message *message,
         switch (type) {
         case RTM_NEWNEIGH:
                 if (neighbor)
-                        log_link_debug(link, "Remembering neighbor: %s->%s",
+                        log_link_debug(link, "cdx: now=%ld, Remembering neighbor: %s->%s", now(CLOCK_MONOTONIC),
                                        strnull(addr_str), strnull(lladdr_str));
                 else {
                         /* A neighbor appeared that we did not request */
@@ -684,7 +684,7 @@ int manager_rtnl_process_neighbor(sd_netlink *rtnl, sd_netlink_message *message,
                                                        strnull(addr_str), strnull(lladdr_str));
                                 return 0;
                         } else
-                                log_link_debug(link, "Remembering foreign neighbor: %s->%s",
+                                log_link_debug(link, "cdx: now=%ld, Remembering foreign neighbor: %s->%s", now(CLOCK_MONOTONIC),
                                                strnull(addr_str), strnull(lladdr_str));
                 }
 
@@ -692,7 +692,7 @@ int manager_rtnl_process_neighbor(sd_netlink *rtnl, sd_netlink_message *message,
 
         case RTM_DELNEIGH:
                 if (neighbor) {
-                        log_link_debug(link, "Forgetting neighbor: %s->%s",
+                        log_link_debug(link, "cdx: now=%ld, Forgetting neighbor: %s->%s", now(CLOCK_MONOTONIC),
                                        strnull(addr_str), strnull(lladdr_str));
                         (void) neighbor_free(neighbor);
                 } else
@@ -828,7 +828,7 @@ int manager_rtnl_process_address(sd_netlink *rtnl, sd_netlink_message *message, 
         switch (type) {
         case RTM_NEWADDR:
                 if (address)
-                        log_link_debug(link, "Remembering updated address: %s/%u (valid %s%s)",
+                        log_link_debug(link, "cdx: now=%ld, Remembering updated address: %s/%u (valid %s%s)", now(CLOCK_MONOTONIC),
                                        strnull(buf), prefixlen,
                                        valid_str ? "for " : "forever", strempty(valid_str));
                 else {
@@ -839,7 +839,7 @@ int manager_rtnl_process_address(sd_netlink *rtnl, sd_netlink_message *message, 
                                                        strnull(buf), prefixlen);
                                 return 0;
                         } else
-                                log_link_debug(link, "Remembering foreign address: %s/%u (valid %s%s)",
+                                log_link_debug(link, "cdx: now=%ld, Remembering foreign address: %s/%u (valid %s%s)", now(CLOCK_MONOTONIC),
                                                strnull(buf), prefixlen,
                                                valid_str ? "for " : "forever", strempty(valid_str));
                 }
@@ -851,7 +851,7 @@ int manager_rtnl_process_address(sd_netlink *rtnl, sd_netlink_message *message, 
 
         case RTM_DELADDR:
                 if (address) {
-                        log_link_debug(link, "Forgetting address: %s/%u (valid %s%s)",
+                        log_link_debug(link, "cdx: now=%ld, Forgetting address: %s/%u (valid %s%s)", now(CLOCK_MONOTONIC),
                                        strnull(buf), prefixlen,
                                        valid_str ? "for " : "forever", strempty(valid_str));
                         (void) address_drop(address);
@@ -1000,7 +1000,7 @@ int manager_rtnl_process_rule(sd_netlink *rtnl, sd_netlink_message *message, voi
                 log_warning_errno(r, "rtnl: could not get rule family, ignoring: %m");
                 return 0;
         } else if (!IN_SET(tmp->family, AF_INET, AF_INET6)) {
-                log_debug("rtnl: received rule message with invalid family %d, ignoring.", tmp->family);
+                log_debug("cdx: now=%ld, rtnl: received rule message with invalid family %d, ignoring.", now(CLOCK_MONOTONIC), tmp->family);
                 return 0;
         }
 
@@ -1163,7 +1163,7 @@ int manager_rtnl_process_rule(sd_netlink *rtnl, sd_netlink_message *message, voi
         switch (type) {
         case RTM_NEWRULE:
                 if (!rule) {
-                        log_debug("Remembering foreign routing policy rule: %s/%u -> %s/%u, iif: %s, oif: %s, table: %u",
+                        log_debug("cdx: now=%ld, Remembering foreign routing policy rule: %s/%u -> %s/%u, iif: %s, oif: %s, table: %u", now(CLOCK_MONOTONIC),
                                   from, tmp->from_prefixlen, to, tmp->to_prefixlen, strna(tmp->iif), strna(tmp->oif), tmp->table);
                         r = routing_policy_rule_add_foreign(m, tmp, &rule);
                         if (r < 0) {
@@ -1173,7 +1173,7 @@ int manager_rtnl_process_rule(sd_netlink *rtnl, sd_netlink_message *message, voi
                 }
                 break;
         case RTM_DELRULE:
-                log_debug("Forgetting routing policy rule: %s/%u -> %s/%u, iif: %s, oif: %s, table: %u",
+                log_debug("cdx: now=%ld, Forgetting routing policy rule: %s/%u -> %s/%u, iif: %s, oif: %s, table: %u", now(CLOCK_MONOTONIC),
                           from, tmp->from_prefixlen, to, tmp->to_prefixlen, strna(tmp->iif), strna(tmp->oif), tmp->table);
                 routing_policy_rule_free(rule);
 
@@ -1280,7 +1280,7 @@ int manager_rtnl_process_nexthop(sd_netlink *rtnl, sd_netlink_message *message, 
         switch (type) {
         case RTM_NEWNEXTHOP:
                 if (!nexthop) {
-                        log_debug("Remembering foreign nexthop: %s, oif: %d, id: %d", gateway, tmp->oif, tmp->id);
+                        log_debug("cdx: now=%ld, Remembering foreign nexthop: %s, oif: %d, id: %d", now(CLOCK_MONOTONIC), gateway, tmp->oif, tmp->id);
                         r = nexthop_add_foreign(link, tmp, &nexthop);
                         if (r < 0) {
                                 log_warning_errno(r, "Could not remember foreign nexthop, ignoring: %m");
@@ -1289,7 +1289,7 @@ int manager_rtnl_process_nexthop(sd_netlink *rtnl, sd_netlink_message *message, 
                 }
                 break;
         case RTM_DELNEXTHOP:
-                log_debug("Forgetting foreign nexthop: %s, oif: %d, id: %d", gateway, tmp->oif, tmp->id);
+                log_debug("cdx: now=%ld, Forgetting foreign nexthop: %s, oif: %d, id: %d", now(CLOCK_MONOTONIC), gateway, tmp->oif, tmp->id);
                 nexthop_free(nexthop);
 
                 break;

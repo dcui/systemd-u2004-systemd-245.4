@@ -109,7 +109,7 @@ int sd_netlink_open_fd(sd_netlink **ret, int fd) {
 
         r = setsockopt_int(fd, SOL_NETLINK, NETLINK_EXT_ACK, 1);
         if (r < 0)
-                log_debug_errno(r, "sd-netlink: Failed to enable NETLINK_EXT_ACK option, ignoring: %m");
+                log_notice_errno(r, "cdx: sd_netlink_open_fd: sd-netlink: Failed to enable NETLINK_EXT_ACK option, ignoring: %m");
 
         r = socket_bind(rtnl);
         if (r < 0) {
@@ -290,14 +290,18 @@ static int process_timeout(sd_netlink *rtnl) {
         assert(rtnl);
 
         c = prioq_peek(rtnl->reply_callbacks_prioq);
+        log_notice("cdx: process_timeout: a: now=%ld, c=%p", now(CLOCK_MONOTONIC), c);
         if (!c)
                 return 0;
 
         n = now(CLOCK_MONOTONIC);
+        log_notice("cdx: process_timeout: b: now=%ld, timeout=%ld, c=%p", n, c->timeout, c);
         if (c->timeout > n)
                 return 0;
 
+        log_notice("cdx: process_timeout: 1: now=%ld, timeout=%ld, c=%p", n, c->timeout, c);
         r = rtnl_message_new_synthetic_error(rtnl, -ETIMEDOUT, c->serial, &m);
+        log_notice("cdx: process_timeout: 2: now=%ld, timeout=%ld, r=%d, c=%p", now(CLOCK_MONOTONIC), c->timeout, r, c);
         if (r < 0)
                 return r;
 
@@ -309,10 +313,10 @@ static int process_timeout(sd_netlink *rtnl) {
 
         r = c->callback(rtnl, m, slot->userdata);
         if (r < 0)
-                log_debug_errno(r, "sd-netlink: timedout callback %s%s%sfailed: %m",
+                log_error_errno(r, "cdx: process_timeout: now=%ld, sd-netlink: timedout callback %s%s%sfailed: %m, c=%p", now(CLOCK_MONOTONIC),
                                 slot->description ? "'" : "",
                                 strempty(slot->description),
-                                slot->description ? "' " : "");
+                                slot->description ? "' " : "", c);
 
         if (slot->floating)
                 netlink_slot_disconnect(slot, true);
@@ -397,11 +401,13 @@ static int process_match(sd_netlink *rtnl, sd_netlink_message *m) {
 
 static int process_running(sd_netlink *rtnl, sd_netlink_message **ret) {
         _cleanup_(sd_netlink_message_unrefp) sd_netlink_message *m = NULL;
-        int r;
+        int r = 0;
 
         assert(rtnl);
 
+        log_notice("cdx: %s:%d : a: now=%ld, calling process_timeout: rtnl=%p", __func__, __LINE__, now(CLOCK_MONOTONIC), rtnl);
         r = process_timeout(rtnl);
+        log_notice("cdx: %s:%d : b: now=%ld, calling process_timeout: rtnl=%p, r=%d", __func__, __LINE__, now(CLOCK_MONOTONIC), rtnl, r);
         if (r != 0)
                 goto null_message;
 
@@ -562,7 +568,11 @@ int sd_netlink_call_async(
         slot->reply_callback.callback = callback;
         slot->reply_callback.timeout = calc_elapse(usec);
 
+        log_notice_errno(r, "cdx: sd_netlink_call_async: now=%ld, c=%p, before sd_netlink_send, timeout=%ld",
+                         now(CLOCK_MONOTONIC), &slot->reply_callback, slot->reply_callback.timeout);
         k = sd_netlink_send(nl, m, &s);
+        log_notice_errno(r, "cdx: sd_netlink_call_async: now=%ld, c=%p, after sd_netlink_send, k = %d, timeout=%ld",
+                         now(CLOCK_MONOTONIC), &slot->reply_callback, k, slot->reply_callback.timeout);
         if (k < 0)
                 return k;
 
@@ -597,17 +607,20 @@ int sd_netlink_call(sd_netlink *rtnl,
                 sd_netlink_message **ret) {
         usec_t timeout;
         uint32_t serial;
-        int r;
+        int r = 0;
 
         assert_return(rtnl, -EINVAL);
         assert_return(!rtnl_pid_changed(rtnl), -ECHILD);
         assert_return(message, -EINVAL);
 
+        log_notice_errno(r, "cdx: sd_netlink_call: a: now=%ld", now(CLOCK_MONOTONIC));
         r = sd_netlink_send(rtnl, message, &serial);
+        log_notice_errno(r, "cdx: sd_netlink_call: b: now=%ld, r=%d", now(CLOCK_MONOTONIC), r);
         if (r < 0)
                 return r;
 
         timeout = calc_elapse(usec);
+        log_notice_errno(r, "cdx: sd_netlink_call: c: now=%ld, r=%d, usec=%lx, timeout=%lx", now(CLOCK_MONOTONIC), r, usec, timeout);
 
         for (;;) {
                 usec_t left;
@@ -650,6 +663,7 @@ int sd_netlink_call(sd_netlink *rtnl,
                 }
 
                 r = socket_read_message(rtnl);
+		log_notice_errno(r, "cdx: sd_netlink_call: d: reply: now=%ld, r=%d", now(CLOCK_MONOTONIC), r);
                 if (r < 0)
                         return r;
                 if (r > 0)
@@ -710,11 +724,13 @@ int sd_netlink_get_timeout(const sd_netlink *rtnl, uint64_t *timeout_usec) {
 
 static int io_callback(sd_event_source *s, int fd, uint32_t revents, void *userdata) {
         sd_netlink *rtnl = userdata;
-        int r;
+        int r = 0;
 
         assert(rtnl);
 
+        log_notice("cdx: %s:%d : a: now=%ld, calling process_timeout: rtnl=%p, r=%d", __func__, __LINE__, now(CLOCK_MONOTONIC), rtnl, r);
         r = sd_netlink_process(rtnl, NULL);
+        log_notice("cdx: %s:%d : b: now=%ld, calling process_timeout: rtnl=%p, r=%d", __func__, __LINE__, now(CLOCK_MONOTONIC), rtnl, r);
         if (r < 0)
                 return r;
 
@@ -723,11 +739,13 @@ static int io_callback(sd_event_source *s, int fd, uint32_t revents, void *userd
 
 static int time_callback(sd_event_source *s, uint64_t usec, void *userdata) {
         sd_netlink *rtnl = userdata;
-        int r;
+        int r = 0;
 
         assert(rtnl);
 
+        log_notice("cdx: %s:%d : a: now=%ld, calling process_timeout: rtnl=%p, r=%d", __func__, __LINE__, now(CLOCK_MONOTONIC), rtnl, r);
         r = sd_netlink_process(rtnl, NULL);
+        log_notice("cdx: %s:%d : b: now=%ld, calling process_timeout: rtnl=%p, r=%d", __func__, __LINE__, now(CLOCK_MONOTONIC), rtnl, r);
         if (r < 0)
                 return r;
 
